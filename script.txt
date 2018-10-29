@@ -1,0 +1,37 @@
+Enable-PSRemoting -Force #enable remote management of a Windows Server
+
+
+Install-WindowsFeature -Name Web-Server -IncludeManagementTools -IncludeAllSubFeature
+
+mkdir "C:\Program Files\dotnet"
+$dotNetSdkFolder = "C:\Program Files\dotnet"
+$url = "https://download.visualstudio.microsoft.com/download/pr/7010cdb4-ae43-408b-8c9f-5f94101a1c70/3e1ae56a072c7c397f10278d7643b3e9/dotnet-sdk-2.1.403-win-gs-x64.exe"
+$output = "$dotNetSdkFolder\dotnet-sdk-2.1.403-win-gs-x64.exe"
+Import-Module BitsTransfer
+Start-BitsTransfer -Source $url -Destination $output
+start-process -FilePath "$dotNetSdkFolder\dotnet-sdk-2.1.403-win-gs-x64.exe" -ArgumentList "/silent /accepteula" -Wait
+
+
+mkdir App
+$AppFolder = "C:\App"
+$urlApp = "https://github.com/gigazet/aspnethelloworld/archive/master.zip"
+$outputApp = "$AppFolder\master.zip"
+Start-BitsTransfer -Source $urlApp -Destination $outputApp
+$shell = new-object -com shell.application
+$zip = $shell.NameSpace($outputApp)
+foreach($item in $zip.items())
+{
+ $shell.Namespace($AppFolder).copyhere($item)
+}
+
+cd $AppFolder\aspnethelloworld-master
+
+shutdown /r
+
+dotnet build
+dotnet publish
+
+6. netsh advfirewall firewall add rule name="DevOps" dir=in action=allow protocol=TCP localport=9000
+7. 
+cd $AppFolder\aspnethelloworld-master 
+dotnet run 
