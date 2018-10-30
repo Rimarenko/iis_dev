@@ -1,8 +1,35 @@
-Enable-PSRemoting -Force #enable remote management of a Windows Server
+#enable remote management of a Windows Server
+Enable-PSRemoting -Force 
+
+mkdir "C:\Program Files\OpenSSH-Win64"
+$folderssh = "C:\Program Files\OpenSSH-Win64"
+$urlssh = "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v7.7.2.0p1-Beta/OpenSSH-Win64.zip"
+$outputssh = "$folderssh\OpenSSH-Win64.zip"
+bitsadmin /transfer mydownload /dynamic /download /priority FOREGROUND $urlssh $outputssh 
+$shell = new-object -com shell.application
+$zip = $shell.NameSpace($outputssh)
+foreach($item in $zip.items())
+{
+ $shell.Namespace("C:\Program Files\").copyhere($item)
+}
+cd $folderssh
+powershell.exe -ExecutionPolicy Bypass -File install-sshd.ps1
+Set-Service sshd -StartupType Automatic
+netsh advfirewall firewall add rule name=sshd dir=in action=allow protocol=TCP localport=22
+net start sshd
 
 
-Install-WindowsFeature -Name Web-Server -IncludeManagementTools -IncludeAllSubFeature
 
+
+#connect to remote server
+$computerName = 'VM2_FOR_TEST_CORE'
+$credential = Get-Credential
+Enter-PSSession -ComputerName $computerName -Credential $credential
+
+#install IIS with depends
+Install-WindowsFeature -Name Web-Server -IncludeManagementTools -IncludeAllSubFeature # install .net application
+
+#install .NET
 mkdir "C:\Program Files\dotnet"
 $dotNetSdkFolder = "C:\Program Files\dotnet"
 $url = "https://download.visualstudio.microsoft.com/download/pr/7010cdb4-ae43-408b-8c9f-5f94101a1c70/3e1ae56a072c7c397f10278d7643b3e9/dotnet-sdk-2.1.403-win-gs-x64.exe"
@@ -11,11 +38,11 @@ Import-Module BitsTransfer
 Start-BitsTransfer -Source $url -Destination $output
 start-process -FilePath "$dotNetSdkFolder\dotnet-sdk-2.1.403-win-gs-x64.exe" -ArgumentList "/silent /accepteula" -Wait
 
-
-mkdir App
-$AppFolder = "C:\App"
+# copy application with GitHub
+$AppFolder = "C:\inetpub"
 $urlApp = "https://github.com/gigazet/aspnethelloworld/archive/master.zip"
 $outputApp = "$AppFolder\master.zip"
+Import-Module BitsTransfer
 Start-BitsTransfer -Source $urlApp -Destination $outputApp
 $shell = new-object -com shell.application
 $zip = $shell.NameSpace($outputApp)
@@ -24,14 +51,11 @@ foreach($item in $zip.items())
  $shell.Namespace($AppFolder).copyhere($item)
 }
 
+
 cd $AppFolder\aspnethelloworld-master
-
-shutdown /r
-
 dotnet build
 dotnet publish
 
-6. netsh advfirewall firewall add rule name="DevOps" dir=in action=allow protocol=TCP localport=9000
-7. 
+netsh advfirewall firewall add rule name="DevOps" dir=in action=allow protocol=TCP localport=9000
 cd $AppFolder\aspnethelloworld-master 
 dotnet run 
