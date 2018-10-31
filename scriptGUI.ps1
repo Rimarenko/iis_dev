@@ -1,41 +1,3 @@
-#On server CORE 
-
-#enable remote management of a Windows Server
-Enable-PSRemoting -Force
-
-# Add name and IP server with GUI
-$file = "$env:windir\System32\drivers\etc\hosts"
-"192.168.88.1 VM2_FOR_TEST_GUI" | Add-Content -PassThru $file
-
-# Rename server
-(Get-WmiObject Win32_ComputerSystem).Rename("VM2_FOR_TEST_CORE") 
-
-# Find interfaces
-$adr = Get-NetIPInterface
-$interfaces = @()
-foreach ($a in $adr)
-{
-if ($a.AddressFamily -like "IPv4")# -and -not $a.InterfaceAlias.Contains("Loopback"))
-{
-$interfaces += $a.ifIndex
-}
-}
-
-# Set new IP Address
-New-NetIPAddress –InterfaceIndex $interfaces[0] -AddressFamily IPv4 –IPAddress 209.190.121.252 -PrefixLength 29
-New-NetIPAddress –InterfaceIndex $interfaces[1] -AddressFamily IPv4 –IPAddress 192.168.88.2 -PrefixLength 24
-
-# Set new password local Administrator
-$password = ConvertTo-SecureString "dsf@Fbhc!!hc23P4P" -AsPlainText -Force
-Set-LocalUser Administrator -Password $password
-
-shutdown /r
-
-
-
-
-
-#On server with GUI
 # Add name and IP server with GUI
 $file = "$env:windir\System32\drivers\etc\hosts"
 "192.168.88.2 VM2_FOR_TEST_CORE" | Add-Content -PassThru $file
@@ -117,37 +79,9 @@ netsh advfirewall firewall add rule name="DevOps" dir=in action=allow protocol=T
 
 # Run Application
 cd $AppFolder\aspnethelloworld-master 
-
 ((Get-Content -path $AppFolder\aspnethelloworld-master\Properties\launchSettings.json -Raw) -replace '"https://localhost:5001;http://localhost:5000"','"https://192.168.88.2:9000;http://localhost:9000"') | Set-Content -Path $AppFolder\aspnethelloworld-master\Properties\launchSettings.json
+
 dotnet run 
-
-
-
-
-
-
-
-
-#Section for ssh
-
-mkdir "C:\Program Files\OpenSSH-Win64"
-$folderssh = "C:\Program Files\OpenSSH-Win64"
-$urlssh = "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v7.7.2.0p1-Beta/OpenSSH-Win64.zip"
-$outputssh = "$folderssh\OpenSSH-Win64.zip"
-bitsadmin /transfer mydownload /dynamic /download /priority FOREGROUND $urlssh $outputssh 
-$shell = new-object -com shell.application
-$zip = $shell.NameSpace($outputssh)
-foreach($item in $zip.items())
-{
- $shell.Namespace("C:\Program Files\").copyhere($item)
-}
-cd $folderssh
-powershell.exe -ExecutionPolicy Bypass -File install-sshd.ps1
-Set-Service sshd -StartupType Automatic
-netsh advfirewall firewall add rule name=smb dir=in action=allow protocol=TCP localport=445 # Open port 22 for SSH
-New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force # Set powershell default
-net start sshd
-
 
 
 
